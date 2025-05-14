@@ -20,6 +20,11 @@ Aplikasi Scraping AWB ini dibuat dengan menggunakan bahasa pemrograman Go (Golan
 
 ---
 
+## Endpoint
+`GET /awb/{awb_number}`
+
+---
+
 ## Cara Menjalankan Aplikasi
 
 ### 1. Clone Repository
@@ -34,9 +39,6 @@ cd golang-web-scraping
 docker build -t golang-web-scraping .
 docker run -p 8080:8080 golang-web-scraping
 ```
-
-## Endpoint
-`GET /awb/{awb_number}`
 
 ## Aplikasi berjalan di http://localhost:8080
 contoh: http://localhost:8080/awb/325244024003

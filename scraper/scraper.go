@@ -1,15 +1,20 @@
 package scraper
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
+
+type Status struct {
+	Code    string
+	Message string
+}
 
 type TrackingInfo struct {
 	Description string `json:"description"`
@@ -30,26 +35,29 @@ func ScrapeAWB(awb string) (*AWBData, error) {
 
 	resp, err := client.Get(url)
 	if err != nil {
-		// Validasi timeout dan error jaringan lainnya
 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			return nil, errors.New("request timed out")
+			return nil, Response("408", "request timed out")
 		}
 		if opErr, ok := err.(*net.OpError); ok {
-			return nil, fmt.Errorf("network error: %v", opErr.Err)
+			return nil, Response("NETWORK_ERROR_CODE", fmt.Sprintf("network error: %v", opErr.Err))
 		}
-		return nil, fmt.Errorf("failed to perform HTTP request: %v", err)
+		return nil, Response("400", fmt.Sprintf("failed to perform HTTP request: %v", err))
 	}
 	defer resp.Body.Close()
 
 	// Validasi status HTTP
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, Response("404", "AWB number not found")
+		} else {
+			return nil, Response(strconv.Itoa(resp.StatusCode), fmt.Sprintf("unexpected status code: %d", resp.StatusCode))
+		}
 	}
 
 	// Parse dokumen HTML
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		return nil, errors.New("failed to parse response HTML")
+		return nil, Response("400", "failed to parse response HTML")
 	}
 
 	var history []TrackingInfo
@@ -70,11 +78,23 @@ func ScrapeAWB(awb string) (*AWBData, error) {
 	})
 
 	if len(history) == 0 {
-		return nil, errors.New("no tracking information found")
+		return nil, Response("404", "AWB number not found")
 	}
 
 	return &AWBData{
 		WaybillNumber: awb,
 		History:       history,
 	}, nil
+}
+
+func (e *Status) Error() string {
+	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+// Fungsi bantu untuk membuat error
+func Response(code, message string) *Status {
+	return &Status{
+		Code:    code,
+		Message: message,
+	}
 }

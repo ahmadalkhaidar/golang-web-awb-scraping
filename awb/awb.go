@@ -16,19 +16,30 @@ func GetAWBInfo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": map[string]interface{}{
-				"code":    "40003",
-				"message": "AWB number not found",
-			},
-			"data": nil,
-		})
-		return
+		if appErr, ok := err.(*scraper.Status); ok {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"status": map[string]interface{}{
+					"code":    appErr.Code,
+					"message": appErr.Message,
+				},
+				"data": nil,
+			})
+			return
+		} else {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"status": map[string]interface{}{
+					"code":    "500",
+					"message": err.Error(),
+				},
+				"data": nil,
+			})
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": map[string]interface{}{
-			"code":    "00000",
+			"code":    "060101",
 			"message": "Delivery tracking detail fetched successfully",
 		},
 		"data": result,
